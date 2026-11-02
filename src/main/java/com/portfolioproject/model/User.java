@@ -11,7 +11,7 @@ public class User {
 
     private List<Holding> holdings;
 
-
+ 
     // Default constructor
     // Required by Jackson while reading JSON
     public User() {

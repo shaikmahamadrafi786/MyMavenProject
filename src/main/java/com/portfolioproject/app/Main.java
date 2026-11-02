@@ -1,15 +1,19 @@
 package com.portfolioproject.app;
 
-import com.portfolioproject.model.User;
+import java.util.Comparator;
+import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import com.portfolioproject.model.Stock;
-import com.portfolioproject.model.MutualFund;
+import com.portfolioproject.concurrent.PriceUpdateTask;
+import com.portfolioproject.model.Asset;
 import com.portfolioproject.model.Holding;
+import com.portfolioproject.model.MutualFund;
+import com.portfolioproject.model.Stock;
+import com.portfolioproject.model.User;
 import com.portfolioproject.service.PortfolioService;
 import com.portfolioproject.util.JsonUtil;
-
-import java.util.Scanner;
-import java.util.Comparator;
 
 public class Main {
 
@@ -36,7 +40,8 @@ public class Main {
             System.out.println("6. Sort Holdings");
             System.out.println("7. Save Data");
             System.out.println("8. Load Data");
-            System.out.println("9. Exit");
+            System.out.println("9. Update Stock Prices Concurrently");
+            System.out.println("10. Exit");
             System.out.println("----------------------------");
 
             System.out.print("Enter your choice: ");
@@ -49,39 +54,39 @@ public class Main {
                 // CASE 1: CREATE USER
                 // =========================================
 
-                case 1:
+            case 1:
 
-                    System.out.println("\n--- Create User ---");
+				System.out.println("\n--- Create User ---");
 
-                    System.out.print("Enter User ID: ");
-                    String userid = sc.nextLine();
+				System.out.print("Enter User ID: ");
+				String userid = sc.nextLine();
 
-                    System.out.print("Enter User Name: ");
-                    String name = sc.nextLine();
+				System.out.print("Enter User Name: ");
+				String name = sc.nextLine();
 
-                    System.out.print("Enter Email: ");
-                    String email = sc.nextLine();
+				System.out.print("Enter Email: ");
+				String email = sc.nextLine();
 
-                    // Check whether user already exists
-                    if (portfolioService.userExists(userid)) {
+				// Check whether user already exists
+				if (portfolioService.userExists(userid)) 
+				{
+					System.out.println("User already exists!");
+					// Log a warning
+					Object logger;
+					logger.warn("Attempt to create an existing user: {}", userid);
 
-                        System.out.println("User already exists!");
-
-                    } else {
-
-                        User user = new User(userid, name, email);
-
-                        portfolioService.addUser(user);
-
-                        System.out.println("User created successfully!");
-                    }
-
-                    break;
+				} 
+				else 
+				{
+					User user = new User(userid, name, email);
+					portfolioService.addUser(user);
+					System.out.println("User created successfully!");
+					// Log successful user creation
+					 .info("User created successfully: {}", userid);
+				}
+				break;
 
 
-                // =========================================
-                // CASE 2: ADD STOCK HOLDING
-                // =========================================
 
                 case 2:
 
@@ -127,7 +132,7 @@ public class Main {
                             currentPrice
                     );
 
-                    // Create Holding object
+                    // Create Holding object      
                     Holding stockHolding = new Holding(
                             stockHoldingId,
                             stock,
@@ -156,7 +161,7 @@ public class Main {
                     String mfUserId = sc.nextLine();
 
                     // Get user from HashMap through service
-                    User mfUser = portfolioService.getUser(mfUserId);
+                    User mfUser = portfolioService.(mfUserId);
 
                     if (mfUser == null) {
 
@@ -381,9 +386,103 @@ public class Main {
 
                     break;
                  // =========================================
-                 // CASE 9: Exit
+                 // CASE 9: Update Stock Prices Concurrently
+                 // =========================================
+
+//                 case 9:
+//                     System.out.println("\n--- Update Stock Prices Concurrently ---");
+//
+//                     break;
+                    // =========================================
+                   // CASE 9: Update Stock Prices Concurrently
+                   // =========================================
+                    
+//                case 9: 
+//                {
+//                    System.out.println("\n--- Update Stock Prices Concurrently ---");
+//                    for (User user : portfolioService.getAllUsers()) 
+//                    {
+//                        for (Holding holding : user.getHoldings())
+//                        {
+//                            Asset asset = holding.getAsset();
+//                            if (asset instanceof Stock)
+//                            {
+//                                Stock stockForUpdate = (Stock) asset;
+//                                PriceUpdateTask task =new PriceUpdateTask(stockForUpdate);
+//                                Thread thread = new Thread(task);
+//                                thread.start();
+//                            }
+//                        }
+//                    }
+//
+//                    break;
+//                }
+                 // =========================================
+                 // CASE 9: Update Stock Prices Concurrently
                  // =========================================
                 case 9:
+                {
+                    System.out.println("\n--- Update Stock Prices Concurrently ---");
+                    ExecutorService executor = Executors.newFixedThreadPool(4);
+                    for (User user : portfolioService.getAllUsers())
+                    {
+                        for (Holding holding : user.getHoldings())
+                        {
+                            Asset asset = holding.getAsset();
+                            if (asset instanceof Stock)
+                            {
+                                Stock stockForUpdate = (Stock) asset;
+                                PriceUpdateTask task =new PriceUpdateTask(stockForUpdate);
+                                Future<Double> future = executor.submit(task);
+                                System.out.println("Task submitted for: "
+                                        + stockForUpdate.getAssetName());
+                            }
+                        }
+                    }
+                    executor.shutdown();
+                    break;
+                }
+                
+                //If we got race condtion overcome it using syncronization method
+//                case 9:
+//                {
+//                    System.out.println("\n--- Race Condition Demonstration ---");
+//                    ExecutorService executor =Executors.newFixedThreadPool(2);
+//                    Stock stockForUpdate = null;
+//                    // Find the first stock
+//                    for (User user : portfolioService.getAllUsers())
+//                    {
+//                        for (Holding holding : user.getHoldings())
+//                        {
+//                            Asset asset = holding.getAsset();
+//                            if (asset instanceof Stock)
+//                            {
+//                                stockForUpdate = (Stock) asset;
+//                                break;
+//                            }
+//                        }
+//                        if (stockForUpdate != null)
+//                        {
+//                            break;
+//                        }
+//                    }
+//                    if (stockForUpdate != null)
+//                    {
+//                        System.out.println("Stock: "+ stockForUpdate.getAssetName());
+//                        System.out.println("Initial Price: "+ stockForUpdate.getCurrentPrice());
+//                        PriceUpdateTask task1 =new PriceUpdateTask(stockForUpdate);
+//                        PriceUpdateTask task2 =new PriceUpdateTask(stockForUpdate);
+//                        executor.submit(task1);
+//                        executor.submit(task2);
+//                        executor.shutdown();
+//                    }
+//
+//                    break;
+//                }
+                 // =========================================
+                 // CASE 10: Exit
+                 // =========================================
+                case 10:
 
                     System.out.println(
                             "\nThank you for using " +
@@ -400,11 +499,11 @@ public class Main {
                 default:
 
                     System.out.println(
-                            "Invalid choice. Please enter 1 to 7."
+                            "Invalid choice. Please enter 1 to 9."
                     );
             }
 
-        } while (choice != 9);
+        } while (choice != 10);
 
         sc.close();
     }
